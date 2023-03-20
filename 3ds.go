@@ -6,53 +6,54 @@ import (
 	"os"
 )
 
+// Load3DS 从3DS文件中加载网格
 func Load3DS(filename string) (*Mesh, error) {
 	type ChunkHeader struct {
 		ChunkID uint16
 		Length  uint32
 	}
 
-	file, err := os.Open(filename)
+	file, err := os.Open(filename) // 打开文件
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer file.Close() // 关闭文件
 
-	var vertices []Vector
-	var faces []*Triangle
-	var triangles []*Triangle
+	var vertices []Vector // 顶点列表
+	var faces []*Triangle // 面列表
+	var triangles []*Triangle // 三角形列表
 	for {
 		header := ChunkHeader{}
-		if err := binary.Read(file, binary.LittleEndian, &header); err != nil {
+		if err := binary.Read(file, binary.LittleEndian, &header); err != nil { // 读取块头
 			if err == io.EOF {
 				break
 			}
 			return nil, err
 		}
 		switch header.ChunkID {
-		case 0x4D4D:
-		case 0x3D3D:
-		case 0x4000:
-			_, err := readNullTerminatedString(file)
+		case 0x4D4D: // 主块
+		case 0x3D3D: // 3D编辑器块
+		case 0x4000: // 对象块
+			_, err := readNullTerminatedString(file) // 读取对象名称
 			if err != nil {
 				return nil, err
 			}
-		case 0x4100:
-		case 0x4110:
-			v, err := readVertexList(file)
+		case 0x4100: // 三角形对象块
+		case 0x4110: // 顶点列表
+			v, err := readVertexList(file) // 读取顶点列表
 			if err != nil {
 				return nil, err
 			}
 			vertices = v
-		case 0x4120:
-			f, err := readFaceList(file, vertices)
+		case 0x4120: // 面列表
+			f, err := readFaceList(file, vertices) // 读取面列表
 			if err != nil {
 				return nil, err
 			}
 			faces = f
 			triangles = append(triangles, faces...)
-		case 0x4150:
-			err := readSmoothingGroups(file, faces)
+		case 0x4150: // 平滑组列表
+			err := readSmoothingGroups(file, faces) // 读取平滑组列表
 			if err != nil {
 				return nil, err
 			}
@@ -65,19 +66,20 @@ func Load3DS(filename string) (*Mesh, error) {
 		// 		vertices[i] = matrix.MulPosition(v)
 		// 	}
 		default:
-			file.Seek(int64(header.Length-6), 1)
+			file.Seek(int64(header.Length-6), 1) // 跳过未知块
 		}
 	}
 
-	return NewTriangleMesh(triangles), nil
+	return NewTriangleMesh(triangles), nil // 返回三角形网格
 }
 
+// readSmoothingGroups 读取平滑组列表
 func readSmoothingGroups(file *os.File, triangles []*Triangle) error {
-	groups := make([]uint32, len(triangles))
-	if err := binary.Read(file, binary.LittleEndian, &groups); err != nil {
+	groups := make([]uint32, len(triangles)) // 平滑组列表
+	if err := binary.Read(file, binary.LittleEndian, &groups); err != nil { // 读取平滑组列表
 		return err
 	}
-	var tables [32]map[Vector][]Vector
+	var tables [32]map[Vector][]Vector // 平滑组表
 	for i := 0; i < 32; i++ {
 		tables[i] = make(map[Vector][]Vector)
 	}
@@ -117,6 +119,7 @@ func readSmoothingGroups(file *os.File, triangles []*Triangle) error {
 	return nil
 }
 
+// readLocalAxis 读取本地坐标系
 func readLocalAxis(file *os.File) (Matrix, error) {
 	var m [4][3]float32
 	if err := binary.Read(file, binary.LittleEndian, &m); err != nil {
@@ -131,15 +134,16 @@ func readLocalAxis(file *os.File) (Matrix, error) {
 	return matrix, nil
 }
 
+// readVertexList 读取顶点列表
 func readVertexList(file *os.File) ([]Vector, error) {
 	var count uint16
-	if err := binary.Read(file, binary.LittleEndian, &count); err != nil {
+	if err := binary.Read(file, binary.LittleEndian, &count); err != nil { // 读取顶点数
 		return nil, err
 	}
-	result := make([]Vector, count)
+	result := make([]Vector, count) // 顶点列表
 	for i := range result {
 		var v [3]float32
-		if err := binary.Read(file, binary.LittleEndian, &v); err != nil {
+		if err := binary.Read(file, binary.LittleEndian, &v); err != nil { // 读取顶点坐标
 			return nil, err
 		}
 		result[i] = Vector{float64(v[0]), float64(v[1]), float64(v[2])}
@@ -147,15 +151,16 @@ func readVertexList(file *os.File) ([]Vector, error) {
 	return result, nil
 }
 
+// readFaceList 读取面列表
 func readFaceList(file *os.File, vertices []Vector) ([]*Triangle, error) {
 	var count uint16
-	if err := binary.Read(file, binary.LittleEndian, &count); err != nil {
+	if err := binary.Read(file, binary.LittleEndian, &count); err != nil { // 读取面数
 		return nil, err
 	}
-	result := make([]*Triangle, count)
+	result := make([]*Triangle, count) // 面列表
 	for i := range result {
 		var v [4]uint16
-		if err := binary.Read(file, binary.LittleEndian, &v); err != nil {
+		if err := binary.Read(file, binary.LittleEndian, &v); err != nil { // 读取面顶点索引
 			return nil, err
 		}
 		result[i] = NewTriangleForPoints(
@@ -164,6 +169,7 @@ func readFaceList(file *os.File, vertices []Vector) ([]*Triangle, error) {
 	return result, nil
 }
 
+// readNullTerminatedString 读取以null结尾的字符串
 func readNullTerminatedString(file *os.File) (string, error) {
 	var bytes []byte
 	buf := make([]byte, 1)
