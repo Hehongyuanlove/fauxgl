@@ -1,56 +1,59 @@
 package fauxgl
 
+// Voxel 体素
 type Voxel struct {
-	X, Y, Z int
-	Color   Color
+	X, Y, Z int   // 体素坐标
+	Color   Color // 体素颜色
 }
 
 type voxelAxis int
 
 const (
-	_ voxelAxis = iota
-	voxelX
-	voxelY
-	voxelZ
+	_      voxelAxis = iota
+	voxelX           // x轴
+	voxelY           // y轴
+	voxelZ           // z轴
 )
 
 type voxelNormal struct {
-	Axis voxelAxis
-	Sign int
+	Axis voxelAxis // 轴
+	Sign int       // 符号
 }
 
 var (
-	voxelPosX = voxelNormal{voxelX, 1}
-	voxelNegX = voxelNormal{voxelX, -1}
-	voxelPosY = voxelNormal{voxelY, 1}
-	voxelNegY = voxelNormal{voxelY, -1}
-	voxelPosZ = voxelNormal{voxelZ, 1}
-	voxelNegZ = voxelNormal{voxelZ, -1}
+	voxelPosX = voxelNormal{voxelX, 1}  // x轴正方向
+	voxelNegX = voxelNormal{voxelX, -1} // x轴负方向
+	voxelPosY = voxelNormal{voxelY, 1}  // y轴正方向
+	voxelNegY = voxelNormal{voxelY, -1} // y轴负方向
+	voxelPosZ = voxelNormal{voxelZ, 1}  // z轴正方向
+	voxelNegZ = voxelNormal{voxelZ, -1} // z轴负方向
 )
 
+// voxelPlane 体素平面
 type voxelPlane struct {
-	Normal   voxelNormal
-	Position int
-	Color    Color
+	Normal   voxelNormal // 法向量
+	Position int         // 位置
+	Color    Color       // 颜色
 }
 
+// voxelFace 体素面
 type voxelFace struct {
-	I0, J0 int
-	I1, J1 int
+	I0, J0 int // 左上角坐标
+	I1, J1 int // 右下角坐标
 }
 
+// NewVoxelMesh 根据体素创建网格
 func NewVoxelMesh(voxels []Voxel) *Mesh {
 	type key struct {
 		X, Y, Z int
 	}
-
-	// create lookup table
+	// 创建查找表
 	lookup := make(map[key]bool)
 	for _, v := range voxels {
 		lookup[key{v.X, v.Y, v.Z}] = true
 	}
 
-	// find exposed faces
+	// 查找暴露的面
 	planeFaces := make(map[voxelPlane][]voxelFace)
 	for _, v := range voxels {
 		if !lookup[key{v.X + 1, v.Y, v.Z}] {
@@ -88,7 +91,7 @@ func NewVoxelMesh(voxels []Voxel) *Mesh {
 	var triangles []*Triangle
 	var lines []*Line
 
-	// find large rectangles, triangulate and outline
+	// 查找大矩形，三角化和轮廓线
 	for plane, faces := range planeFaces {
 		faces = combineVoxelFaces(faces)
 		lines = append(lines, outlineVoxelFaces(plane, faces)...)
@@ -98,8 +101,9 @@ func NewVoxelMesh(voxels []Voxel) *Mesh {
 	return NewMesh(triangles, lines)
 }
 
+// combineVoxelFaces 将相邻的面合并
 func combineVoxelFaces(faces []voxelFace) []voxelFace {
-	// determine bounding box
+	// 确定边界框
 	i0 := faces[0].I0
 	j0 := faces[0].J0
 	i1 := faces[0].I1
@@ -118,7 +122,7 @@ func combineVoxelFaces(faces []voxelFace) []voxelFace {
 			j1 = f.J1
 		}
 	}
-	// create arrays
+	// 创建数组
 	nj := j1 - j0 + 1
 	ni := i1 - i0 + 1
 	a := make([][]int, nj)
@@ -129,7 +133,7 @@ func combineVoxelFaces(faces []voxelFace) []voxelFace {
 		w[j] = make([]int, ni)
 		h[j] = make([]int, ni)
 	}
-	// populate array
+	// 填充数组
 	count := 0
 	for _, f := range faces {
 		for j := f.J0; j <= f.J1; j++ {
@@ -139,7 +143,7 @@ func combineVoxelFaces(faces []voxelFace) []voxelFace {
 			}
 		}
 	}
-	// find rectangles
+	// 查找矩形
 	var result []voxelFace
 	for count > 0 {
 		var maxArea int
@@ -190,6 +194,7 @@ func combineVoxelFaces(faces []voxelFace) []voxelFace {
 	return result
 }
 
+// triangulateVoxelFaces 根据体素面创建三角形
 func triangulateVoxelFaces(plane voxelPlane, faces []voxelFace) []*Triangle {
 	triangles := make([]*Triangle, len(faces)*2)
 	k := float64(plane.Position) + float64(plane.Normal.Sign)*0.5
@@ -233,8 +238,9 @@ func triangulateVoxelFaces(plane voxelPlane, faces []voxelFace) []*Triangle {
 	return triangles
 }
 
+// outlineVoxelFaces 根据体素面创建轮廓线
 func outlineVoxelFaces(plane voxelPlane, faces []voxelFace) []*Line {
-	// determine bounding box
+	// 确定边界框
 	i0 := faces[0].I0
 	j0 := faces[0].J0
 	i1 := faces[0].I1
@@ -253,19 +259,19 @@ func outlineVoxelFaces(plane voxelPlane, faces []voxelFace) []*Line {
 			j1 = f.J1
 		}
 	}
-	// padding
+	// 填充
 	i0--
 	j0--
 	i1++
 	j1++
-	// create array
+	// 创建数组
 	nj := j1 - j0 + 1
 	ni := i1 - i0 + 1
 	a := make([][]bool, nj)
 	for j := range a {
 		a[j] = make([]bool, ni)
 	}
-	// populate array
+	// 填充数组
 	for _, f := range faces {
 		for j := f.J0; j <= f.J1; j++ {
 			for i := f.I0; i <= f.I1; i++ {
@@ -275,7 +281,7 @@ func outlineVoxelFaces(plane voxelPlane, faces []voxelFace) []*Line {
 	}
 	var lines []*Line
 	for sign := -1; sign <= 1; sign += 2 {
-		// find "horizontal" lines
+		// 查找“水平”线
 		for j := 1; j < nj-1; j++ {
 			start := -1
 			for i := 0; i < ni; i++ {
@@ -295,7 +301,7 @@ func outlineVoxelFaces(plane voxelPlane, faces []voxelFace) []*Line {
 			}
 
 		}
-		// find "vertical" lines
+		// 查找“垂直”线
 		for i := 1; i < ni-1; i++ {
 			start := -1
 			for j := 0; j < nj; j++ {
@@ -318,6 +324,7 @@ func outlineVoxelFaces(plane voxelPlane, faces []voxelFace) []*Line {
 	return lines
 }
 
+// createVoxelOutline 根据体素面创建轮廓线
 func createVoxelOutline(plane voxelPlane, i0, j0, i1, j1 float64) *Line {
 	k := float64(plane.Position) + float64(plane.Normal.Sign)*0.5
 	var p1, p2 Vector
