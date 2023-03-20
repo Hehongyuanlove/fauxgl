@@ -4,12 +4,23 @@ import (
 	"image"
 	"math"
 )
-
+// Texture 纹理接口
 type Texture interface {
+	// Sample 对纹理进行采样
+	// u, v: 纹理坐标
+	// 返回值: 采样得到的颜色
 	Sample(u, v float64) Color
+
+	// BilinearSample 使用双线性插值对纹理进行采样
+	// u, v: 纹理坐标
+	// 返回值: 采样得到的颜色
 	BilinearSample(u, v float64) Color
 }
 
+
+// LoadTexture 加载纹理
+// path: 纹理文件路径
+// 返回值: 纹理对象和错误信息
 func LoadTexture(path string) (Texture, error) {
 	im, err := LoadImage(path)
 	if err != nil {
@@ -18,17 +29,24 @@ func LoadTexture(path string) (Texture, error) {
 	return NewImageTexture(im), nil
 }
 
+// ImageTexture 纹理对象
 type ImageTexture struct {
 	Width  int
 	Height int
 	Image  image.Image
 }
 
+// NewImageTexture 创建纹理对象
+// im: 图像对象
+// 返回值: 纹理对象
 func NewImageTexture(im image.Image) Texture {
 	size := im.Bounds().Max
 	return &ImageTexture{size.X, size.Y, im}
 }
 
+// Sample 对纹理进行采样
+// u, v: 纹理坐标
+// 返回值: 采样得到的颜色
 func (t *ImageTexture) Sample(u, v float64) Color {
 	v = 1 - v
 	u -= math.Floor(u)
@@ -38,6 +56,9 @@ func (t *ImageTexture) Sample(u, v float64) Color {
 	return MakeColor(t.Image.At(x, y))
 }
 
+// BilinearSample 使用双线性插值对纹理进行采样
+// u, v: 纹理坐标
+// 返回值: 采样得到的颜色
 func (t *ImageTexture) BilinearSample(u, v float64) Color {
 	v = 1 - v
 	u -= math.Floor(u)
