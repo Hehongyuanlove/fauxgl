@@ -3,48 +3,53 @@ package fauxgl
 import "math"
 
 type Matrix struct {
-	X00, X01, X02, X03 float64
-	X10, X11, X12, X13 float64
-	X20, X21, X22, X23 float64
-	X30, X31, X32, X33 float64
+	X00, X01, X02, X03 float64 // 第一行
+	X10, X11, X12, X13 float64 // 第二行
+	X20, X21, X22, X23 float64 // 第三行
+	X30, X31, X32, X33 float64 // 第四行
 }
 
+// Identity 返回一个单位矩阵
 func Identity() Matrix {
 	return Matrix{
-		1, 0, 0, 0,
-		0, 1, 0, 0,
-		0, 0, 1, 0,
-		0, 0, 0, 1}
+		1, 0, 0, 0, // 第一行
+		0, 1, 0, 0, // 第二行
+		0, 0, 1, 0, // 第三行
+		0, 0, 0, 1} // 第四行
 }
 
+// Translate 返回一个平移矩阵
 func Translate(v Vector) Matrix {
 	return Matrix{
-		1, 0, 0, v.X,
-		0, 1, 0, v.Y,
-		0, 0, 1, v.Z,
-		0, 0, 0, 1}
+		1, 0, 0, v.X, // 第一行
+		0, 1, 0, v.Y, // 第二行
+		0, 0, 1, v.Z, // 第三行
+		0, 0, 0, 1} // 第四行
 }
 
+// Scale 返回一个缩放矩阵
 func Scale(v Vector) Matrix {
 	return Matrix{
-		v.X, 0, 0, 0,
-		0, v.Y, 0, 0,
-		0, 0, v.Z, 0,
-		0, 0, 0, 1}
+		v.X, 0, 0, 0, // 第一行
+		0, v.Y, 0, 0, // 第二行
+		0, 0, v.Z, 0, // 第三行
+		0, 0, 0, 1} // 第四行
 }
 
+// Rotate 返回一个绕向量 v 旋转 a 角度的矩阵
 func Rotate(v Vector, a float64) Matrix {
 	v = v.Normalize()
 	s := math.Sin(a)
 	c := math.Cos(a)
 	m := 1 - c
 	return Matrix{
-		m*v.X*v.X + c, m*v.X*v.Y + v.Z*s, m*v.Z*v.X - v.Y*s, 0,
-		m*v.X*v.Y - v.Z*s, m*v.Y*v.Y + c, m*v.Y*v.Z + v.X*s, 0,
-		m*v.Z*v.X + v.Y*s, m*v.Y*v.Z - v.X*s, m*v.Z*v.Z + c, 0,
-		0, 0, 0, 1}
+		m*v.X*v.X + c, m*v.X*v.Y + v.Z*s, m*v.Z*v.X - v.Y*s, 0, // 第一行
+		m*v.X*v.Y - v.Z*s, m*v.Y*v.Y + c, m*v.Y*v.Z + v.X*s, 0, // 第二行
+		m*v.Z*v.X + v.Y*s, m*v.Y*v.Z - v.X*s, m*v.Z*v.Z + c, 0, // 第三行
+		0, 0, 0, 1} // 第四行
 }
 
+// RotateTo 返回一个将 a 向量旋转到 b 向量的矩阵
 func RotateTo(a, b Vector) Matrix {
 	dot := b.Dot(a)
 	if dot == 1 {
@@ -58,6 +63,7 @@ func RotateTo(a, b Vector) Matrix {
 	}
 }
 
+// Orient 返回一个定位矩阵
 func Orient(position, size, up Vector, rotation float64) Matrix {
 	m := Rotate(Vector{0, 0, 1}, rotation)
 	m = m.Scale(size)
@@ -66,116 +72,143 @@ func Orient(position, size, up Vector, rotation float64) Matrix {
 	return m
 }
 
+// Frustum 返回一个透视投影矩阵
 func Frustum(l, r, b, t, n, f float64) Matrix {
 	t1 := 2 * n
 	t2 := r - l
 	t3 := t - b
 	t4 := f - n
 	return Matrix{
-		t1 / t2, 0, (r + l) / t2, 0,
-		0, t1 / t3, (t + b) / t3, 0,
-		0, 0, (-f - n) / t4, (-t1 * f) / t4,
-		0, 0, -1, 0}
+		t1 / t2, 0, (r + l) / t2, 0, // 第一行
+		0, t1 / t3, (t + b) / t3, 0, // 第二行
+		0, 0, (-f - n) / t4, (-t1 * f) / t4, // 第三行
+		0, 0, -1, 0} // 第四行
 }
 
+// Orthographic 返回一个正交投影矩阵
 func Orthographic(l, r, b, t, n, f float64) Matrix {
 	return Matrix{
-		2 / (r - l), 0, 0, -(r + l) / (r - l),
-		0, 2 / (t - b), 0, -(t + b) / (t - b),
-		0, 0, -2 / (f - n), -(f + n) / (f - n),
-		0, 0, 0, 1}
+		2 / (r - l), 0, 0, -(r + l) / (r - l), // 第一行
+		0, 2 / (t - b), 0, -(t + b) / (t - b), // 第二行
+		0, 0, -2 / (f - n), -(f + n) / (f - n), // 第三行
+		0, 0, 0, 1} // 第四行
 }
 
+// Perspective 返回一个透视投影矩阵
 func Perspective(fovy, aspect, near, far float64) Matrix {
 	ymax := near * math.Tan(fovy*math.Pi/360)
 	xmax := ymax * aspect
 	return Frustum(-xmax, xmax, -ymax, ymax, near, far)
 }
 
+// LookAt 返回一个观察矩阵
 func LookAt(eye, center, up Vector) Matrix {
 	z := eye.Sub(center).Normalize()
 	x := up.Cross(z).Normalize()
 	y := z.Cross(x)
 	return Matrix{
-		x.X, x.Y, x.Z, -x.Dot(eye),
-		y.X, y.Y, y.Z, -y.Dot(eye),
-		z.X, z.Y, z.Z, -z.Dot(eye),
-		0, 0, 0, 1,
+		x.X, x.Y, x.Z, -x.Dot(eye), // 第一行
+		y.X, y.Y, y.Z, -y.Dot(eye), // 第二行
+		z.X, z.Y, z.Z, -z.Dot(eye), // 第三行
+		0, 0, 0, 1, // 第四行
 	}
 }
 
+// LookAtDirection 返回一个观察矩阵
 func LookAtDirection(forward, up Vector) Matrix {
 	z := forward.Normalize()
 	x := up.Cross(z).Normalize()
 	y := z.Cross(x)
 	return Matrix{
-		x.X, x.Y, x.Z, 0,
-		y.X, y.Y, y.Z, 0,
-		z.X, z.Y, z.Z, 0,
-		0, 0, 0, 1,
+		x.X, x.Y, x.Z, 0, // 第一行
+		y.X, y.Y, y.Z, 0, // 第二行
+		z.X, z.Y, z.Z, 0, // 第三行
+		0, 0, 0, 1, // 第四行
 	}
 }
 
+// Screen 返回一个屏幕矩阵
 func Screen(w, h int) Matrix {
 	w2 := float64(w) / 2
 	h2 := float64(h) / 2
 	return Matrix{
-		w2, 0, 0, w2,
-		0, -h2, 0, h2,
-		0, 0, 0.5, 0.5,
-		0, 0, 0, 1,
+		w2, 0, 0, w2, // 第一行
+		0, -h2, 0, h2, // 第二行
+		0, 0, 0.5, 0.5, // 第三行
+		0, 0, 0, 1, // 第四行
 	}
 }
 
+// Viewport 返回一个视口矩阵
 func Viewport(x, y, w, h float64) Matrix {
 	l := x
 	b := y
 	r := x + w
 	t := y + h
 	return Matrix{
-		(r - l) / 2, 0, 0, (r + l) / 2,
-		0, (t - b) / 2, 0, (t + b) / 2,
-		0, 0, 0.5, 0.5,
-		0, 0, 0, 1,
+		(r - l) / 2, 0, 0, (r + l) / 2, // 第一行
+		0, (t - b) / 2, 0, (t + b) / 2, // 第二行
+		0, 0, 0.5, 0.5, // 第三行
+		0, 0, 0, 1, // 第四行
 	}
 }
 
+// Translate 返回一个平移矩阵
 func (m Matrix) Translate(v Vector) Matrix {
 	return Translate(v).Mul(m)
 }
 
+// Scale 返回一个缩放矩阵
 func (m Matrix) Scale(v Vector) Matrix {
 	return Scale(v).Mul(m)
 }
 
+// Rotate 返回一个绕向量 v 旋转 a 角度的矩阵
 func (m Matrix) Rotate(v Vector, a float64) Matrix {
 	return Rotate(v, a).Mul(m)
 }
 
+// RotateTo 返回一个将 a 向量旋转到 b 向量的矩阵
 func (m Matrix) RotateTo(a, b Vector) Matrix {
 	return RotateTo(a, b).Mul(m)
 }
 
+// Frustum 返回一个透视投影矩阵
 func (m Matrix) Frustum(l, r, b, t, n, f float64) Matrix {
 	return Frustum(l, r, b, t, n, f).Mul(m)
 }
 
+// Orthographic 返回一个正交投影矩阵
 func (m Matrix) Orthographic(l, r, b, t, n, f float64) Matrix {
 	return Orthographic(l, r, b, t, n, f).Mul(m)
 }
 
+// Perspective 返回一个透视投影矩阵
 func (m Matrix) Perspective(fovy, aspect, near, far float64) Matrix {
 	return Perspective(fovy, aspect, near, far).Mul(m)
 }
 
+// LookAt 返回一个观察矩阵
 func (m Matrix) LookAt(eye, center, up Vector) Matrix {
 	return LookAt(eye, center, up).Mul(m)
 }
 
+// LookAtDirection 返回一个观察矩阵
+func (m Matrix) LookAtDirection(forward, up Vector) Matrix {
+	return LookAtDirection(forward, up).Mul(m)
+}
+
+// Screen 返回一个屏幕矩阵
+func (m Matrix) Screen(w, h int) Matrix {
+	return Screen(w, h).Mul(m)
+}
+
+// Viewport 返回一个视口矩阵
 func (m Matrix) Viewport(x, y, w, h float64) Matrix {
 	return Viewport(x, y, w, h).Mul(m)
 }
 
+// MulScalar 返回矩阵的标量积
 func (a Matrix) MulScalar(b float64) Matrix {
 	return Matrix{
 		a.X00 * b, a.X01 * b, a.X02 * b, a.X03 * b,
@@ -185,6 +218,7 @@ func (a Matrix) MulScalar(b float64) Matrix {
 	}
 }
 
+// Mul 返回矩阵的乘积
 func (a Matrix) Mul(b Matrix) Matrix {
 	m := Matrix{}
 	m.X00 = a.X00*b.X00 + a.X01*b.X10 + a.X02*b.X20 + a.X03*b.X30
@@ -206,6 +240,7 @@ func (a Matrix) Mul(b Matrix) Matrix {
 	return m
 }
 
+// MulPosition 返回矩阵与位置向量的乘积
 func (a Matrix) MulPosition(b Vector) Vector {
 	x := a.X00*b.X + a.X01*b.Y + a.X02*b.Z + a.X03
 	y := a.X10*b.X + a.X11*b.Y + a.X12*b.Z + a.X13
@@ -213,6 +248,7 @@ func (a Matrix) MulPosition(b Vector) Vector {
 	return Vector{x, y, z}
 }
 
+// MulPositionW 返回矩阵与位置向量的乘积
 func (a Matrix) MulPositionW(b Vector) VectorW {
 	x := a.X00*b.X + a.X01*b.Y + a.X02*b.Z + a.X03
 	y := a.X10*b.X + a.X11*b.Y + a.X12*b.Z + a.X13
@@ -221,6 +257,7 @@ func (a Matrix) MulPositionW(b Vector) VectorW {
 	return VectorW{x, y, z, w}
 }
 
+// MulDirection 返回矩阵与方向向量的乘积
 func (a Matrix) MulDirection(b Vector) Vector {
 	x := a.X00*b.X + a.X01*b.Y + a.X02*b.Z
 	y := a.X10*b.X + a.X11*b.Y + a.X12*b.Z
@@ -228,6 +265,7 @@ func (a Matrix) MulDirection(b Vector) Vector {
 	return Vector{x, y, z}.Normalize()
 }
 
+// MulBox 返回矩阵与包围盒的乘积
 func (a Matrix) MulBox(box Box) Box {
 	// http://dev.theomader.com/transform-bounding-boxes/
 	r := Vector{a.X00, a.X10, a.X20}
@@ -248,6 +286,7 @@ func (a Matrix) MulBox(box Box) Box {
 	return Box{min, max}
 }
 
+// Transpose 返回矩阵的转置矩阵
 func (a Matrix) Transpose() Matrix {
 	return Matrix{
 		a.X00, a.X10, a.X20, a.X30,
@@ -256,6 +295,7 @@ func (a Matrix) Transpose() Matrix {
 		a.X03, a.X13, a.X23, a.X33}
 }
 
+// Determinant 返回矩阵的行列式
 func (a Matrix) Determinant() float64 {
 	return (a.X00*a.X11*a.X22*a.X33 - a.X00*a.X11*a.X23*a.X32 +
 		a.X00*a.X12*a.X23*a.X31 - a.X00*a.X12*a.X21*a.X33 +
@@ -271,6 +311,7 @@ func (a Matrix) Determinant() float64 {
 		a.X03*a.X12*a.X20*a.X31 + a.X03*a.X12*a.X21*a.X30)
 }
 
+// Inverse 返回矩阵的逆矩阵
 func (a Matrix) Inverse() Matrix {
 	m := Matrix{}
 	d := a.Determinant()
