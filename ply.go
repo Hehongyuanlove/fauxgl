@@ -8,75 +8,82 @@ import (
 	"strings"
 )
 
+// ply格式
 type plyFormat int
 
 const (
-	_ plyFormat = iota
-	plyAscii
-	plyBinaryLittleEndian
-	plyBinaryBigEndian
+	_                     plyFormat = iota
+	plyAscii                        // ascii格式
+	plyBinaryLittleEndian           // 小端字节序
+	plyBinaryBigEndian              // 大端字节序
 )
 
+// ply格式映射
 var plyFormatMapping = map[string]plyFormat{
-	"ascii":                plyAscii,
-	"binary_little_endian": plyBinaryLittleEndian,
-	"binary_big_endian":    plyBinaryBigEndian,
+	"ascii":                plyAscii,              // ascii格式
+	"binary_little_endian": plyBinaryLittleEndian, // 小端字节序
+	"binary_big_endian":    plyBinaryBigEndian,    // 大端字节序
 }
 
+// ply数据类型
 type plyDataType int
 
 const (
-	plyNone plyDataType = iota
-	plyInt8
-	plyUint8
-	plyInt16
-	plyUint16
-	plyInt32
-	plyUint32
-	plyFloat32
-	plyFloat64
+	plyNone    plyDataType = iota // 无类型
+	plyInt8                       // 8位整型
+	plyUint8                      // 8位无符号整型
+	plyInt16                      // 16位整型
+	plyUint16                     // 16位无符号整型
+	plyInt32                      // 32位整型
+	plyUint32                     // 32位无符号整型
+	plyFloat32                    // 32位单精度浮点型
+	plyFloat64                    // 64位双精度浮点型
 )
 
+// ply数据类型映射
 var plyDataTypeMapping = map[string]plyDataType{
-	"char":    plyInt8,
-	"uchar":   plyUint8,
-	"short":   plyInt16,
-	"ushort":  plyUint16,
-	"int":     plyInt32,
-	"uint":    plyUint32,
-	"float":   plyFloat32,
-	"double":  plyFloat64,
-	"int8":    plyInt8,
-	"uint8":   plyUint8,
-	"int16":   plyInt16,
-	"uint16":  plyUint16,
-	"int32":   plyInt32,
-	"uint32":  plyUint32,
-	"float32": plyFloat32,
-	"float64": plyFloat64,
+	"char":    plyInt8,    // 字符型
+	"uchar":   plyUint8,   // 无符号字符型
+	"short":   plyInt16,   // 短整型
+	"ushort":  plyUint16,  // 无符号短整型
+	"int":     plyInt32,   // 整型
+	"uint":    plyUint32,  // 无符号整型
+	"float":   plyFloat32, // 单精度浮点型
+	"double":  plyFloat64, // 双精度浮点型
+	"int8":    plyInt8,    // 8位整型
+	"uint8":   plyUint8,   // 8位无符号整型
+	"int16":   plyInt16,   // 16位整型
+	"uint16":  plyUint16,  // 16位无符号整型
+	"int32":   plyInt32,   // 32位整型
+	"uint32":  plyUint32,  // 32位无符号整型
+	"float32": plyFloat32, // 32位单精度浮点型
+	"float64": plyFloat64, // 64位双精度浮点型
 }
 
+// ply属性
 type plyProperty struct {
-	name      string
-	countType plyDataType
-	dataType  plyDataType
+	name      string      // 属性名
+	countType plyDataType // 计数类型
+	dataType  plyDataType // 数据类型
 }
 
+// ply元素
 type plyElement struct {
-	name       string
-	count      int
-	properties []plyProperty
+	name       string        // 元素名
+	count      int           // 元素数量
+	properties []plyProperty // 属性列表
 }
 
+// LoadPLY 从PLY文件中加载网格
 func LoadPLY(path string) (*Mesh, error) {
-	// open file
+	// 打开文件
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	// read header
+	// 读取头部信息
 	reader := bufio.NewReader(file)
 	var element plyElement
 	var elements []plyElement
@@ -138,6 +145,7 @@ func LoadPLY(path string) (*Mesh, error) {
 	}
 }
 
+// 从PLY文件中加载网格（ASCII格式）
 func loadPlyAscii(file *os.File, elements []plyElement) (*Mesh, error) {
 	scanner := bufio.NewScanner(file)
 	var vertexes []Vector
@@ -152,12 +160,15 @@ func loadPlyAscii(file *os.File, elements []plyElement) (*Mesh, error) {
 			for _, property := range element.properties {
 				if property.name == "x" {
 					vertex.X, _ = strconv.ParseFloat(f[fi], 64)
+					vertex.X, _ = strconv.ParseFloat(f[fi], 64) // 解析x坐标
 				}
 				if property.name == "y" {
 					vertex.Y, _ = strconv.ParseFloat(f[fi], 64)
+					vertex.Y, _ = strconv.ParseFloat(f[fi], 64) // 解析y坐标
 				}
 				if property.name == "z" {
 					vertex.Z, _ = strconv.ParseFloat(f[fi], 64)
+					vertex.Z, _ = strconv.ParseFloat(f[fi], 64) // 解析z坐标
 				}
 				if property.name == "vertex_indices" {
 					i1, _ := strconv.ParseInt(f[fi+1], 0, 0)
@@ -175,71 +186,75 @@ func loadPlyAscii(file *os.File, elements []plyElement) (*Mesh, error) {
 			}
 			if element.name == "vertex" {
 				vertexes = append(vertexes, vertex)
+				vertexes = append(vertexes, vertex) // 添加顶点
 			}
 		}
 	}
 	return NewTriangleMesh(triangles), nil
 }
 
+// 从PLY文件中加载网格（二进制格式）
 func loadPlyBinary(file *os.File, elements []plyElement, order binary.ByteOrder) (*Mesh, error) {
-	var vertexes []Vector
-	var triangles []*Triangle
+	var vertexes []Vector     // 顶点列表
+	var triangles []*Triangle // 三角形列表
 	for _, element := range elements {
 		for i := 0; i < element.count; i++ {
-			var vertex Vector
-			var points []Vector
+			var vertex Vector   // 顶点
+			var points []Vector // 点列表
 			for _, property := range element.properties {
-				if property.countType == plyNone {
-					value, err := readPlyFloat(file, order, property.dataType)
+				if property.countType == plyNone { // 非列表类型
+					value, err := readPlyFloat(file, order, property.dataType) // 读取浮点数
 					if err != nil {
 						return nil, err
 					}
-					if property.name == "x" {
-						vertex.X = value
+					if property.name == "x" { // x坐标
+						vertex.X = value // 设置x坐标
 					}
-					if property.name == "y" {
-						vertex.Y = value
+					if property.name == "y" { // y坐标
+						vertex.Y = value // 设置y坐标
 					}
-					if property.name == "z" {
-						vertex.Z = value
+					if property.name == "z" { // z坐标
+						vertex.Z = value // 设置z坐标
 					}
-				} else {
-					count, err := readPlyInt(file, order, property.countType)
+				} else { // 列表类型
+					count, err := readPlyInt(file, order, property.countType) // 读取计数
 					if err != nil {
 						return nil, err
 					}
 					for j := 0; j < count; j++ {
-						value, err := readPlyInt(file, order, property.dataType)
+						value, err := readPlyInt(file, order, property.dataType) // 读取整数
 						if err != nil {
 							return nil, err
 						}
-						if property.name == "vertex_indices" {
-							points = append(points, vertexes[value])
+						if property.name == "vertex_indices" { // 顶点索引
+							points = append(points, vertexes[value]) // 添加点
 						}
 					}
 				}
 			}
-			if element.name == "vertex" {
-				vertexes = append(vertexes, vertex)
+			if element.name == "vertex" { // 顶点
+				vertexes = append(vertexes, vertex) // 添加顶点
 			}
-			if element.name == "face" {
+			if element.name == "face" { // 面
 				t := Triangle{}
-				t.V1.Position = points[0]
-				t.V2.Position = points[1]
-				t.V3.Position = points[2]
-				t.FixNormals()
-				triangles = append(triangles, &t)
+				t.V1.Position = points[0]         // 设置第一个顶点
+				t.V2.Position = points[1]         // 设置第二个顶点
+				t.V3.Position = points[2]         // 设置第三个顶点
+				t.FixNormals()                    // 修正法向量
+				triangles = append(triangles, &t) // 添加三角形
 			}
 		}
 	}
-	return NewTriangleMesh(triangles), nil
+	return NewTriangleMesh(triangles), nil // 返回网格
 }
 
+// 从PLY文件中读取整数
 func readPlyInt(file *os.File, order binary.ByteOrder, dataType plyDataType) (int, error) {
-	value, err := readPlyFloat(file, order, dataType)
+	value, err := readPlyFloat(file, order, dataType) // 读取浮点数
 	return int(value), err
 }
 
+// 从PLY文件中读取浮点数
 func readPlyFloat(file *os.File, order binary.ByteOrder, dataType plyDataType) (float64, error) {
 	switch dataType {
 	case plyInt8:
