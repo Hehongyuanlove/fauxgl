@@ -2,50 +2,57 @@ package fauxgl
 
 import "math"
 
+// Shader 接口
 type Shader interface {
-	Vertex(Vertex) Vertex
-	Fragment(Vertex) Color
+	Vertex(Vertex) Vertex // 顶点着色器
+	Fragment(Vertex) Color // 片元着色器
 }
 
-// SolidColorShader renders with a single, solid color.
+// SolidColorShader 渲染单一颜色
 type SolidColorShader struct {
-	Matrix Matrix
-	Color  Color
+	Matrix Matrix // 变换矩阵
+	Color  Color // 颜色
 }
 
+// NewSolidColorShader 创建一个渲染单一颜色的着色器
 func NewSolidColorShader(matrix Matrix, color Color) *SolidColorShader {
 	return &SolidColorShader{matrix, color}
 }
 
+// Vertex 顶点着色器
 func (shader *SolidColorShader) Vertex(v Vertex) Vertex {
 	v.Output = shader.Matrix.MulPositionW(v.Position)
 	return v
 }
 
+// Fragment 片元着色器
 func (shader *SolidColorShader) Fragment(v Vertex) Color {
 	return shader.Color
 }
 
-// TextureShader renders with a texture and no lighting.
+// TextureShader 渲染纹理
 type TextureShader struct {
 	Matrix  Matrix
 	Texture Texture
 }
 
+// NewTextureShader 创建一个渲染纹理的着色器
 func NewTextureShader(matrix Matrix, texture Texture) *TextureShader {
 	return &TextureShader{matrix, texture}
 }
 
+// Vertex 顶点着色器
 func (shader *TextureShader) Vertex(v Vertex) Vertex {
 	v.Output = shader.Matrix.MulPositionW(v.Position)
 	return v
 }
 
+// Fragment 片元着色器
 func (shader *TextureShader) Fragment(v Vertex) Color {
 	return shader.Texture.BilinearSample(v.Texture.X, v.Texture.Y)
 }
 
-// PhongShader implements Phong shading with an optional texture.
+// PhongShader 实现冯氏着色法
 type PhongShader struct {
 	Matrix         Matrix
 	LightDirection Vector
@@ -57,7 +64,7 @@ type PhongShader struct {
 	Texture        Texture
 	SpecularPower  float64
 }
-
+// NewPhongShader 创建一个实现冯氏着色法的着色器
 func NewPhongShader(matrix Matrix, lightDirection, cameraPosition Vector) *PhongShader {
 	ambient := Color{0.2, 0.2, 0.2, 1}
 	diffuse := Color{0.8, 0.8, 0.8, 1}
@@ -67,11 +74,13 @@ func NewPhongShader(matrix Matrix, lightDirection, cameraPosition Vector) *Phong
 		Discard, ambient, diffuse, specular, nil, 32}
 }
 
+// Vertex 顶点着色器
 func (shader *PhongShader) Vertex(v Vertex) Vertex {
 	v.Output = shader.Matrix.MulPositionW(v.Position)
 	return v
 }
 
+// Fragment 片元着色器
 func (shader *PhongShader) Fragment(v Vertex) Color {
 	light := shader.AmbientColor
 	color := v.Color
