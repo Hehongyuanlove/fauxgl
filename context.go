@@ -303,7 +303,6 @@ func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector) RasterizeInfo
 
 // line 绘制线段
 func (dc *Context) line(v0, v1 Vertex, s0, s1 Vector) RasterizeInfo {
-	var info RasterizeInfo
 	n := s1.Sub(s0).Perpendicular().MulScalar(dc.LineWidth / 2)
 	s0 = s0.Add(s0.Sub(s1).Normalize().MulScalar(dc.LineWidth / 2))
 	s1 = s1.Add(s1.Sub(s0).Normalize().MulScalar(dc.LineWidth / 2))

@@ -1,3 +1,5 @@
+package fauxgl
+
 // silhouette函数用于生成网格的轮廓线
 // 参数mesh是一个网格，eye是视点，offset是轮廓线的偏移量
 func silhouette(mesh *Mesh, eye Vector, offset float64) *Mesh {
