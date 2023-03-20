@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// parseIndex 解析索引
 func parseIndex(value string, length int) int {
 	parsed, _ := strconv.ParseInt(value, 0, 0)
 	n := int(parsed)
@@ -16,6 +17,7 @@ func parseIndex(value string, length int) int {
 	return n
 }
 
+// LoadOBJ 从文件中加载OBJ模型
 func LoadOBJ(path string) (*Mesh, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -77,3 +79,5 @@ func LoadOBJ(path string) (*Mesh, error) {
 	}
 	return NewTriangleMesh(triangles), scanner.Err()
 }
+
+
