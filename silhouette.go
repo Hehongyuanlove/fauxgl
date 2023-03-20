@@ -1,15 +1,19 @@
-package fauxgl
-
+// silhouette函数用于生成网格的轮廓线
+// 参数mesh是一个网格，eye是视点，offset是轮廓线的偏移量
 func silhouette(mesh *Mesh, eye Vector, offset float64) *Mesh {
 	var lines []*Line
 
+	// lerp函数用于计算两个点之间的插值
 	lerp := func(p1, p2 Vector, w1, w2 float64) Vector {
 		t := -w1 / (w2 - w1)
 		return p1.Lerp(p2, t)
 	}
 
+	// 复制网格并平滑法线
 	mesh = mesh.Copy()
 	mesh.SmoothNormals()
+
+	// 遍历三角形
 	for _, t := range mesh.Triangles {
 		p1 := t.V1.Position
 		p2 := t.V2.Position
@@ -37,16 +41,22 @@ func silhouette(mesh *Mesh, eye Vector, offset float64) *Mesh {
 			vn1 = lerp(n1, n2, g1, g2)
 			v2 = lerp(p3, p2, g3, g2)
 			vn2 = lerp(n3, n2, g3, g2)
+			// 添加轮廓线
+			v1 = v1.Add(vn1.MulScalar(offset))
+			v2 = v2.Add(vn2.MulScalar(offset))
+			line := NewLineForPoints(v1, v2)
+			lines = append(lines, line)
 		} else {
 			v1 = lerp(p2, p1, g2, g1)
 			vn1 = lerp(n2, n1, g2, g1)
 			v2 = lerp(p3, p1, g3, g1)
 			vn2 = lerp(n3, n1, g3, g1)
+			// 添加轮廓线
+			v1 = v1.Add(vn1.MulScalar(offset))
+			v2 = v2.Add(vn2.MulScalar(offset))
+			line := NewLineForPoints(v1, v2)
+			lines = append(lines, line)
 		}
-		v1 = v1.Add(vn1.MulScalar(offset))
-		v2 = v2.Add(vn2.MulScalar(offset))
-		line := NewLineForPoints(v1, v2)
-		lines = append(lines, line)
 	}
 
 	return NewLineMesh(lines)
