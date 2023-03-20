@@ -6,31 +6,34 @@ import (
 	"io"
 	"os"
 )
-
+// VOXHeader VOX文件头部
 type VOXHeader struct {
-	Magic   [4]byte
-	Version int32
+	Magic   [4]byte // 魔数
+	Version int32   // 版本号
 }
 
+// VOXChunk VOX文件块
 type VOXChunk struct {
-	ID            [4]byte
-	ContentBytes  int32
-	ChildrenBytes int32
+	ID            [4]byte // 块ID
+	ContentBytes  int32   // 块内容大小
+	ChildrenBytes int32   // 子块大小
 }
 
+// VOXVoxel VOX体素
 type VOXVoxel struct {
-	X, Y, Z, I uint8
+	X, Y, Z, I uint8 // 体素坐标和颜色索引
 }
 
+// LoadVOX 从文件中读取voxel数据
 func LoadVOX(path string) ([]Voxel, error) {
-	// open file
+	// 打开文件
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	// read and check header
+	// 读取并检查头部
 	header := VOXHeader{}
 	if err := binary.Read(file, binary.LittleEndian, &header); err != nil {
 		return nil, err
@@ -55,7 +58,7 @@ func LoadVOX(path string) ([]Voxel, error) {
 	}
 
 	for {
-		// read chunk header
+		// 读取chunk头部
 		chunk := VOXChunk{}
 		if err := binary.Read(file, binary.LittleEndian, &chunk); err != nil {
 			if err == io.EOF || err == io.ErrUnexpectedEOF {
