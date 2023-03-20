@@ -6,32 +6,39 @@ import (
 	"github.com/fogleman/simplify"
 )
 
+// Mesh 网格
 type Mesh struct {
-	Triangles []*Triangle
-	Lines     []*Line
-	box       *Box
+	Triangles []*Triangle // 三角形列表
+	Lines     []*Line     // 线列表
+	box       *Box        // 包围盒
 }
 
+// NewEmptyMesh 创建一个空网格
 func NewEmptyMesh() *Mesh {
 	return &Mesh{}
 }
 
+// NewMesh 创建一个新网格
 func NewMesh(triangles []*Triangle, lines []*Line) *Mesh {
 	return &Mesh{triangles, lines, nil}
 }
 
+// NewTriangleMesh 创建一个新三角形网格
 func NewTriangleMesh(triangles []*Triangle) *Mesh {
 	return &Mesh{triangles, nil, nil}
 }
 
+// NewLineMesh 创建一个新线网格
 func NewLineMesh(lines []*Line) *Mesh {
 	return &Mesh{nil, lines, nil}
 }
 
+// dirty 标记网格为脏
 func (m *Mesh) dirty() {
 	m.box = nil
 }
 
+// Copy 复制网格
 func (m *Mesh) Copy() *Mesh {
 	triangles := make([]*Triangle, len(m.Triangles))
 	lines := make([]*Line, len(m.Lines))
@@ -46,18 +53,21 @@ func (m *Mesh) Copy() *Mesh {
 	return NewMesh(triangles, lines)
 }
 
+// Add 添加网格
 func (a *Mesh) Add(b *Mesh) {
 	a.Triangles = append(a.Triangles, b.Triangles...)
 	a.Lines = append(a.Lines, b.Lines...)
 	a.dirty()
 }
 
+// SetColor 设置网格颜色
 func (m *Mesh) SetColor(c Color) {
 	for _, t := range m.Triangles {
 		t.SetColor(c)
 	}
 }
 
+// Volume 计算网格体积
 func (m *Mesh) Volume() float64 {
 	var v float64
 	for _, t := range m.Triangles {
@@ -69,6 +79,7 @@ func (m *Mesh) Volume() float64 {
 	return math.Abs(v / 6)
 }
 
+// SurfaceArea 计算网格表面积
 func (m *Mesh) SurfaceArea() float64 {
 	var a float64
 	for _, t := range m.Triangles {
@@ -77,6 +88,7 @@ func (m *Mesh) SurfaceArea() float64 {
 	return a
 }
 
+// smoothNormalsThreshold 平滑法线
 func smoothNormalsThreshold(normal Vector, normals []Vector, threshold float64) Vector {
 	result := Vector{}
 	for _, x := range normals {
@@ -87,6 +99,7 @@ func smoothNormalsThreshold(normal Vector, normals []Vector, threshold float64) 
 	return result.Normalize()
 }
 
+// SmoothNormalsThreshold 平滑网格法线
 func (m *Mesh) SmoothNormalsThreshold(radians float64) {
 	threshold := math.Cos(radians)
 	lookup := make(map[Vector][]Vector)
@@ -102,6 +115,7 @@ func (m *Mesh) SmoothNormalsThreshold(radians float64) {
 	}
 }
 
+// SmoothNormals 平滑网格法线
 func (m *Mesh) SmoothNormals() {
 	lookup := make(map[Vector]Vector)
 	for _, t := range m.Triangles {
@@ -119,26 +133,31 @@ func (m *Mesh) SmoothNormals() {
 	}
 }
 
+// UnitCube 单位立方体
 func (m *Mesh) UnitCube() Matrix {
 	const r = 0.5
 	return m.FitInside(Box{Vector{-r, -r, -r}, Vector{r, r, r}}, Vector{0.5, 0.5, 0.5})
 }
 
+// BiUnitCube 双单位立方体
 func (m *Mesh) BiUnitCube() Matrix {
 	const r = 1
 	return m.FitInside(Box{Vector{-r, -r, -r}, Vector{r, r, r}}, Vector{0.5, 0.5, 0.5})
 }
 
+// MoveTo 移动网格
 func (m *Mesh) MoveTo(position, anchor Vector) Matrix {
 	matrix := Translate(position.Sub(m.BoundingBox().Anchor(anchor)))
 	m.Transform(matrix)
 	return matrix
 }
 
+// Center 居中网格
 func (m *Mesh) Center() Matrix {
 	return m.MoveTo(Vector{}, Vector{0.5, 0.5, 0.5})
 }
 
+// FitInside 适应盒子
 func (m *Mesh) FitInside(box Box, anchor Vector) Matrix {
 	scale := box.Size().Div(m.BoundingBox().Size()).MinComponent()
 	extra := box.Size().Sub(m.BoundingBox().Size().MulScalar(scale))
@@ -150,6 +169,7 @@ func (m *Mesh) FitInside(box Box, anchor Vector) Matrix {
 	return matrix
 }
 
+// BoundingBox 计算网格包围盒
 func (m *Mesh) BoundingBox() Box {
 	if m.box == nil {
 		box := EmptyBox
@@ -164,6 +184,7 @@ func (m *Mesh) BoundingBox() Box {
 	return *m.box
 }
 
+// Transform 变换网格
 func (m *Mesh) Transform(matrix Matrix) {
 	for _, t := range m.Triangles {
 		t.Transform(matrix)
@@ -174,12 +195,14 @@ func (m *Mesh) Transform(matrix Matrix) {
 	m.dirty()
 }
 
+// ReverseWinding 反转网格
 func (m *Mesh) ReverseWinding() {
 	for _, t := range m.Triangles {
 		t.ReverseWinding()
 	}
 }
 
+// Simplify 简化网格
 func (m *Mesh) Simplify(factor float64) {
 	st := make([]*simplify.Triangle, len(m.Triangles))
 	for i, t := range m.Triangles {
@@ -200,14 +223,17 @@ func (m *Mesh) Simplify(factor float64) {
 	m.dirty()
 }
 
+// SaveSTL 保存网格为STL文件
 func (m *Mesh) SaveSTL(path string) error {
 	return SaveSTL(path, m)
 }
 
+// Silhouette 提取网格轮廓
 func (m *Mesh) Silhouette(eye Vector, offset float64) *Mesh {
 	return silhouette(m, eye, offset)
 }
 
+// SplitTriangles 分割三角形
 func (m *Mesh) SplitTriangles(maxEdgeLength float64) {
 	var triangles []*Triangle
 
@@ -255,6 +281,7 @@ func (m *Mesh) SplitTriangles(maxEdgeLength float64) {
 	m.dirty()
 }
 
+// SharpEdges 提取网格锐边
 func (m *Mesh) SharpEdges(angleThreshold float64) *Mesh {
 	type Edge struct {
 		A, B Vector
