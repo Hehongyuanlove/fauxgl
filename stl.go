@@ -10,45 +10,48 @@ import (
 	"strings"
 )
 
+// STLHeader 是 STL 文件头部
 type STLHeader struct {
-	_     [80]uint8
-	Count uint32
+	_     [80]uint8 // 保留80字节
+	Count uint32    // 三角形数量
 }
 
+// STLTriangle 是 STL 文件中的三角形
 type STLTriangle struct {
-	N, V1, V2, V3 [3]float32
-	_             uint16
+	N, V1, V2, V3 [3]float32 // 法向量和三角形三个顶点
+	_             uint16     // 保留2字节
 }
 
+// LoadSTL 从 STL 文件中加载网格
 func LoadSTL(path string) (*Mesh, error) {
-	// open file
+	// 打开文件
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	// get file size
+	// 获取文件大小
 	info, err := file.Stat()
 	if err != nil {
 		return nil, err
 	}
 	size := info.Size()
 
-	// read header, get expected binary size
+	// 读取头部，获取预期的二进制大小
 	header := STLHeader{}
 	if err := binary.Read(file, binary.LittleEndian, &header); err != nil {
 		return nil, err
 	}
 	expectedSize := int64(header.Count)*50 + 84
 
-	// rewind to start of file
+	// 倒回文件开头
 	_, err = file.Seek(0, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	// parse ascii or binary stl
+	// 解析 ASCII 或二进制 STL
 	if size == expectedSize {
 		return loadSTLB(file)
 	} else {
@@ -56,8 +59,9 @@ func LoadSTL(path string) (*Mesh, error) {
 	}
 }
 
+// 从 ASCII STL 文件中加载网格
 func loadSTLA(file *os.File) (*Mesh, error) {
-	var vertexes []Vector
+	var vertexes []Vector // 顶点数组
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -67,7 +71,7 @@ func loadSTLA(file *os.File) (*Mesh, error) {
 			vertexes = append(vertexes, Vector{f[0], f[1], f[2]})
 		}
 	}
-	var triangles []*Triangle
+	var triangles []*Triangle // 三角形数组
 	for i := 0; i < len(vertexes); i += 3 {
 		t := Triangle{}
 		t.V1.Position = vertexes[i+0]
@@ -83,6 +87,7 @@ func makeFloat(b []byte) float64 {
 	return float64(math.Float32frombits(binary.LittleEndian.Uint32(b)))
 }
 
+// 从二进制 STL 文件中加载网格
 func loadSTLB(file *os.File) (*Mesh, error) {
 	r := bufio.NewReader(file)
 	header := STLHeader{}
@@ -153,20 +158,31 @@ func loadSTLB(file *os.File) (*Mesh, error) {
 	return mesh, nil
 }
 
+// SaveSTL 将网格保存到 STL 文件中
 func SaveSTL(path string, mesh *Mesh) error {
+	// 创建文件
 	file, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
+
+	// 创建写入器
 	w := bufio.NewWriter(file)
+
+	// 写入头部
 	header := STLHeader{}
 	header.Count = uint32(len(mesh.Triangles))
 	if err := binary.Write(w, binary.LittleEndian, &header); err != nil {
 		return err
 	}
+
+	// 写入三角形
 	for _, triangle := range mesh.Triangles {
+		// 计算法向量
 		n := triangle.Normal()
+
+		// 创建 STL 三角形
 		d := STLTriangle{}
 		d.N[0] = float32(n.X)
 		d.N[1] = float32(n.Y)
@@ -180,10 +196,15 @@ func SaveSTL(path string, mesh *Mesh) error {
 		d.V3[0] = float32(triangle.V3.Position.X)
 		d.V3[1] = float32(triangle.V3.Position.Y)
 		d.V3[2] = float32(triangle.V3.Position.Z)
+
+		// 写入 STL 三角形
 		if err := binary.Write(w, binary.LittleEndian, &d); err != nil {
 			return err
 		}
 	}
+
+	// 刷新缓冲区
 	w.Flush()
+
 	return nil
 }
