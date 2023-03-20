@@ -8,28 +8,39 @@ import (
 	"sync"
 )
 
+// Face 表示三角形的正反面
 type Face int
 
 const (
 	_ Face = iota
+	// FaceCW 表示三角形的正面为顺时针方向
 	FaceCW
+	// FaceCCW 表示三角形的正面为逆时针方向
 	FaceCCW
 )
 
+// Cull 表示剔除模式
 type Cull int
 
 const (
 	_ Cull = iota
+	// CullNone 表示不剔除
 	CullNone
+	// CullFront 表示剔除正面
 	CullFront
+	// CullBack 表示剔除背面
 	CullBack
 )
 
+// RasterizeInfo 表示光栅化信息
 type RasterizeInfo struct {
-	TotalPixels   uint64
+	// TotalPixels 表示总像素数
+	TotalPixels uint64
+	// UpdatedPixels 表示更新的像素数
 	UpdatedPixels uint64
 }
 
+// Add 将两个 RasterizeInfo 相加
 func (info RasterizeInfo) Add(other RasterizeInfo) RasterizeInfo {
 	return RasterizeInfo{
 		info.TotalPixels + other.TotalPixels,
@@ -37,26 +48,28 @@ func (info RasterizeInfo) Add(other RasterizeInfo) RasterizeInfo {
 	}
 }
 
+// Context 是一个渲染上下文，包含颜色缓冲区、深度缓冲区、清除颜色、着色器、深度测试、颜色混合、线框模式、剔除模式、线宽、深度偏移、屏幕矩阵和锁等属性
 type Context struct {
-	Width        int
-	Height       int
-	ColorBuffer  *image.NRGBA
-	DepthBuffer  []float64
-	ClearColor   Color
-	Shader       Shader
-	ReadDepth    bool
-	WriteDepth   bool
-	WriteColor   bool
-	AlphaBlend   bool
-	Wireframe    bool
-	FrontFace    Face
-	Cull         Cull
-	LineWidth    float64
-	DepthBias    float64
-	screenMatrix Matrix
-	locks        []sync.Mutex
+	Width        int          // 宽度
+	Height       int          // 高度
+	ColorBuffer  *image.NRGBA // 颜色缓冲区
+	DepthBuffer  []float64    // 深度缓冲区
+	ClearColor   Color        // 清除颜色
+	Shader       Shader       // 着色器
+	ReadDepth    bool         // 深度测试
+	WriteDepth   bool         // 深度测试
+	WriteColor   bool         // 颜色混合
+	AlphaBlend   bool         // 颜色混合
+	Wireframe    bool         // 线框模式
+	FrontFace    Face         // 剔除模式
+	Cull         Cull         // 剔除模式
+	LineWidth    float64      // 线宽
+	DepthBias    float64      // 深度偏移
+	screenMatrix Matrix       // 屏幕矩阵
+	locks        []sync.Mutex // 锁
 }
 
+// NewContext 创建一个新的渲染上下文
 func NewContext(width, height int) *Context {
 	dc := &Context{}
 	dc.Width = width
@@ -80,10 +93,12 @@ func NewContext(width, height int) *Context {
 	return dc
 }
 
+// Image 返回颜色缓冲区的图像
 func (dc *Context) Image() image.Image {
 	return dc.ColorBuffer
 }
 
+// DepthImage 返回深度缓冲区的图像
 func (dc *Context) DepthImage() image.Image {
 	lo := math.MaxFloat64
 	hi := -math.MaxFloat64
@@ -116,6 +131,7 @@ func (dc *Context) DepthImage() image.Image {
 	return im
 }
 
+// ClearColorBufferWith 使用指定颜色清除颜色缓冲区
 func (dc *Context) ClearColorBufferWith(color Color) {
 	c := color.NRGBA()
 	for y := 0; y < dc.Height; y++ {
@@ -130,28 +146,33 @@ func (dc *Context) ClearColorBufferWith(color Color) {
 	}
 }
 
+// ClearColorBuffer 使用清除颜色清除颜色缓冲区
 func (dc *Context) ClearColorBuffer() {
 	dc.ClearColorBufferWith(dc.ClearColor)
 }
 
+// ClearDepthBufferWith 使用指定值清除深度缓冲区
 func (dc *Context) ClearDepthBufferWith(value float64) {
 	for i := range dc.DepthBuffer {
 		dc.DepthBuffer[i] = value
 	}
 }
 
+// ClearDepthBuffer 使用最大值清除深度缓冲区
 func (dc *Context) ClearDepthBuffer() {
 	dc.ClearDepthBufferWith(math.MaxFloat64)
 }
 
+// edge 计算三角形的边
 func edge(a, b, c Vector) float64 {
 	return (b.X-c.X)*(a.Y-c.Y) - (b.Y-c.Y)*(a.X-c.X)
 }
 
+// rasterize 光栅化三角形
 func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector) RasterizeInfo {
 	var info RasterizeInfo
 
-	// integer bounding box
+	// 整数边界框
 	min := s0.Min(s1.Min(s2)).Floor()
 	max := s0.Max(s1.Max(s2)).Ceil()
 	x0 := int(min.X)
@@ -159,7 +180,7 @@ func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector) RasterizeInfo
 	y0 := int(min.Y)
 	y1 := int(max.Y)
 
-	// forward differencing variables
+	// 前向差分变量
 	p := Vector{float64(x0) + 0.5, float64(y0) + 0.5, 0}
 	w00 := edge(s1, s2, p)
 	w01 := edge(s2, s0, p)
@@ -171,7 +192,7 @@ func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector) RasterizeInfo
 	a20 := s0.Y - s2.Y
 	b20 := s2.X - s0.X
 
-	// reciprocals
+	// 倒数
 	ra := 1 / edge(s0, s1, s2)
 	r0 := 1 / v0.Output.W
 	r1 := 1 / v1.Output.W
@@ -180,7 +201,7 @@ func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector) RasterizeInfo
 	ra20 := 1 / a20
 	ra01 := 1 / a01
 
-	// iterate over all pixels in bounding box
+	// 遍历边界框中的所有像素
 	for y := y0; y <= y1; y++ {
 		var d float64
 		d0 := -w00 * ra12
@@ -197,7 +218,7 @@ func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector) RasterizeInfo
 		}
 		d = float64(int(d))
 		if d < 0 {
-			// occurs in pathological cases
+			// 在病态情况下发生
 			d = 0
 		}
 		w0 := w00 + a12*d
@@ -211,7 +232,7 @@ func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector) RasterizeInfo
 			w0 += a12
 			w1 += a20
 			w2 += a01
-			// check if inside triangle
+			// 检查是否在三角形内部
 			if b0 < 0 || b1 < 0 || b2 < 0 {
 				if wasInside {
 					break
@@ -219,11 +240,11 @@ func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector) RasterizeInfo
 				continue
 			}
 			wasInside = true
-			// check depth buffer for early abort
+			// 检查深度缓冲区以进行早期中止
 			i := y*dc.Width + x
 			if i < 0 || i >= len(dc.DepthBuffer) {
-				// TODO: clipping roundoff error; fix
-				// TODO: could also be from fat lines going off screen
+				// TODO: 裁剪舍入误差；修复
+				// TODO: 也可能是由于粗线超出屏幕
 				continue
 			}
 			info.TotalPixels++
@@ -232,27 +253,27 @@ func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector) RasterizeInfo
 			if dc.ReadDepth && bz > dc.DepthBuffer[i] { // safe w/out lock?
 				continue
 			}
-			// perspective-correct interpolation of vertex data
+			// 透视校正插值顶点数据
 			b := VectorW{b0 * r0, b1 * r1, b2 * r2, 0}
 			b.W = 1 / (b.X + b.Y + b.Z)
 			v := InterpolateVertexes(v0, v1, v2, b)
-			// invoke fragment shader
+			// 调用片段着色器
 			color := dc.Shader.Fragment(v)
 			if color == Discard {
 				continue
 			}
-			// update buffers atomically
+			// 原子更新缓冲区
 			lock := &dc.locks[(x+y)&255]
 			lock.Lock()
-			// check depth buffer again
+			// 再次检查深度缓冲区
 			if bz <= dc.DepthBuffer[i] || !dc.ReadDepth {
 				info.UpdatedPixels++
 				if dc.WriteDepth {
-					// update depth buffer
+					// 更新深度缓冲区
 					dc.DepthBuffer[i] = z
 				}
 				if dc.WriteColor {
-					// update color buffer
+					// 更新颜色缓冲区
 					if dc.AlphaBlend && color.A < 1 {
 						sr, sg, sb, sa := color.NRGBA().RGBA()
 						a := (0xffff - sa) * 0x101
@@ -280,7 +301,9 @@ func (dc *Context) rasterize(v0, v1, v2 Vertex, s0, s1, s2 Vector) RasterizeInfo
 	return info
 }
 
+// line 绘制线段
 func (dc *Context) line(v0, v1 Vertex, s0, s1 Vector) RasterizeInfo {
+	var info RasterizeInfo
 	n := s1.Sub(s0).Perpendicular().MulScalar(dc.LineWidth / 2)
 	s0 = s0.Add(s0.Sub(s1).Normalize().MulScalar(dc.LineWidth / 2))
 	s1 = s1.Add(s1.Sub(s0).Normalize().MulScalar(dc.LineWidth / 2))
@@ -293,6 +316,7 @@ func (dc *Context) line(v0, v1 Vertex, s0, s1 Vector) RasterizeInfo {
 	return info1.Add(info2)
 }
 
+// wireframe 绘制线框
 func (dc *Context) wireframe(v0, v1, v2 Vertex, s0, s1, s2 Vector) RasterizeInfo {
 	info1 := dc.line(v0, v1, s0, s1)
 	info2 := dc.line(v1, v2, s1, s2)
@@ -300,26 +324,28 @@ func (dc *Context) wireframe(v0, v1, v2 Vertex, s0, s1, s2 Vector) RasterizeInfo
 	return info1.Add(info2).Add(info3)
 }
 
+// drawClippedLine 绘制裁剪后的线段
 func (dc *Context) drawClippedLine(v0, v1 Vertex) RasterizeInfo {
-	// normalized device coordinates
+	// 规范化设备坐标
 	ndc0 := v0.Output.DivScalar(v0.Output.W).Vector()
 	ndc1 := v1.Output.DivScalar(v1.Output.W).Vector()
 
-	// screen coordinates
+	// 屏幕坐标
 	s0 := dc.screenMatrix.MulPosition(ndc0)
 	s1 := dc.screenMatrix.MulPosition(ndc1)
 
-	// rasterize
+	// 光栅化
 	return dc.line(v0, v1, s0, s1)
 }
 
+// drawClippedTriangle 绘制裁剪后的三角形
 func (dc *Context) drawClippedTriangle(v0, v1, v2 Vertex) RasterizeInfo {
-	// normalized device coordinates
+	// 规范化设备坐标
 	ndc0 := v0.Output.DivScalar(v0.Output.W).Vector()
 	ndc1 := v1.Output.DivScalar(v1.Output.W).Vector()
 	ndc2 := v2.Output.DivScalar(v2.Output.W).Vector()
 
-	// back face culling
+	// 背面剔除
 	a := (ndc1.X-ndc0.X)*(ndc2.Y-ndc0.Y) - (ndc2.X-ndc0.X)*(ndc1.Y-ndc0.Y)
 	if a < 0 {
 		v0, v1, v2 = v2, v1, v0
@@ -335,12 +361,12 @@ func (dc *Context) drawClippedTriangle(v0, v1, v2 Vertex) RasterizeInfo {
 		return RasterizeInfo{}
 	}
 
-	// screen coordinates
+	// 屏幕坐标
 	s0 := dc.screenMatrix.MulPosition(ndc0)
 	s1 := dc.screenMatrix.MulPosition(ndc1)
 	s2 := dc.screenMatrix.MulPosition(ndc2)
 
-	// rasterize
+	// 光栅化
 	if dc.Wireframe {
 		return dc.wireframe(v0, v1, v2, s0, s1, s2)
 	} else {
@@ -348,13 +374,14 @@ func (dc *Context) drawClippedTriangle(v0, v1, v2 Vertex) RasterizeInfo {
 	}
 }
 
+// DrawLine 绘制线段
 func (dc *Context) DrawLine(t *Line) RasterizeInfo {
-	// invoke vertex shader
+	// 调用顶点着色器
 	v1 := dc.Shader.Vertex(t.V1)
 	v2 := dc.Shader.Vertex(t.V2)
 
 	if v1.Outside() || v2.Outside() {
-		// clip to viewing volume
+		// 裁剪到视图体积
 		line := ClipLine(NewLine(v1, v2))
 		if line != nil {
 			return dc.drawClippedLine(line.V1, line.V2)
@@ -362,19 +389,20 @@ func (dc *Context) DrawLine(t *Line) RasterizeInfo {
 			return RasterizeInfo{}
 		}
 	} else {
-		// no need to clip
+		// 无需裁剪
 		return dc.drawClippedLine(v1, v2)
 	}
 }
 
+// DrawTriangle 绘制三角形
 func (dc *Context) DrawTriangle(t *Triangle) RasterizeInfo {
-	// invoke vertex shader
+	// 调用顶点着色器
 	v1 := dc.Shader.Vertex(t.V1)
 	v2 := dc.Shader.Vertex(t.V2)
 	v3 := dc.Shader.Vertex(t.V3)
 
 	if v1.Outside() || v2.Outside() || v3.Outside() {
-		// clip to viewing volume
+		// 裁剪到视图体积
 		triangles := ClipTriangle(NewTriangle(v1, v2, v3))
 		var result RasterizeInfo
 		for _, t := range triangles {
@@ -383,11 +411,12 @@ func (dc *Context) DrawTriangle(t *Triangle) RasterizeInfo {
 		}
 		return result
 	} else {
-		// no need to clip
+		// 无需裁剪
 		return dc.drawClippedTriangle(v1, v2, v3)
 	}
 }
 
+// DrawLines 绘制线段集合
 func (dc *Context) DrawLines(lines []*Line) RasterizeInfo {
 	wn := runtime.NumCPU()
 	ch := make(chan RasterizeInfo, wn)
@@ -410,6 +439,7 @@ func (dc *Context) DrawLines(lines []*Line) RasterizeInfo {
 	return result
 }
 
+// DrawTriangles 绘制三角形集合
 func (dc *Context) DrawTriangles(triangles []*Triangle) RasterizeInfo {
 	wn := runtime.NumCPU()
 	ch := make(chan RasterizeInfo, wn)
@@ -432,6 +462,7 @@ func (dc *Context) DrawTriangles(triangles []*Triangle) RasterizeInfo {
 	return result
 }
 
+// DrawMesh 绘制网格
 func (dc *Context) DrawMesh(mesh *Mesh) RasterizeInfo {
 	info1 := dc.DrawTriangles(mesh.Triangles)
 	info2 := dc.DrawLines(mesh.Lines)
