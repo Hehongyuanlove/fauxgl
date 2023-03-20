@@ -1,22 +1,26 @@
 package fauxgl
 
+// 剪裁平面
 var clipPlanes = []clipPlane{
-	{VectorW{1, 0, 0, 1}, VectorW{-1, 0, 0, 1}},
-	{VectorW{-1, 0, 0, 1}, VectorW{1, 0, 0, 1}},
-	{VectorW{0, 1, 0, 1}, VectorW{0, -1, 0, 1}},
-	{VectorW{0, -1, 0, 1}, VectorW{0, 1, 0, 1}},
-	{VectorW{0, 0, 1, 1}, VectorW{0, 0, -1, 1}},
-	{VectorW{0, 0, -1, 1}, VectorW{0, 0, 1, 1}},
+	{VectorW{1, 0, 0, 1}, VectorW{-1, 0, 0, 1}}, // 右
+	{VectorW{-1, 0, 0, 1}, VectorW{1, 0, 0, 1}}, // 左
+	{VectorW{0, 1, 0, 1}, VectorW{0, -1, 0, 1}}, // 上
+	{VectorW{0, -1, 0, 1}, VectorW{0, 1, 0, 1}}, // 下
+	{VectorW{0, 0, 1, 1}, VectorW{0, 0, -1, 1}}, // 近
+	{VectorW{0, 0, -1, 1}, VectorW{0, 0, 1, 1}}, // 远
 }
 
+// 剪裁平面结构体
 type clipPlane struct {
 	P, N VectorW
 }
 
+// 判断点是否在平面前面
 func (p clipPlane) pointInFront(v VectorW) bool {
 	return v.Sub(p.P).Dot(p.N) > 0
 }
 
+// 计算线段与平面的交点
 func (p clipPlane) intersectSegment(v0, v1 VectorW) VectorW {
 	u := v1.Sub(v0)
 	w := v0.Sub(p.P)
@@ -25,6 +29,7 @@ func (p clipPlane) intersectSegment(v0, v1 VectorW) VectorW {
 	return v0.Add(u.MulScalar(n / d))
 }
 
+// Sutherland-Hodgman算法
 func sutherlandHodgman(points []VectorW, planes []clipPlane) []VectorW {
 	output := points
 	for _, plane := range planes {
@@ -51,6 +56,7 @@ func sutherlandHodgman(points []VectorW, planes []clipPlane) []VectorW {
 	return output
 }
 
+// 剪裁三角形
 func ClipTriangle(t *Triangle) []*Triangle {
 	w1 := t.V1.Output
 	w2 := t.V2.Output
@@ -73,6 +79,7 @@ func ClipTriangle(t *Triangle) []*Triangle {
 	return result
 }
 
+// 剪裁线段
 func ClipLine(l *Line) *Line {
 	// TODO: interpolate vertex attributes when clipped
 	w1 := l.V1.Output
