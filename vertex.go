@@ -1,27 +1,27 @@
 package fauxgl
 
+// Vertex 顶点结构体
 type Vertex struct {
-	Position Vector
-	Normal   Vector
-	Texture  Vector
-	Color    Color
-	Output   VectorW
-	// Vectors  []Vector
-	// Colors   []Color
-	// Floats   []float64
+	Position Vector  // 位置
+	Normal   Vector  // 法向量
+	Texture  Vector  // 纹理坐标
+	Color    Color   // 颜色
+	Output   VectorW // 输出
 }
 
+// 判断是否在外部
 func (a Vertex) Outside() bool {
 	return a.Output.Outside()
 }
 
+// 插值顶点
 func InterpolateVertexes(v1, v2, v3 Vertex, b VectorW) Vertex {
 	v := Vertex{}
-	v.Position = InterpolateVectors(v1.Position, v2.Position, v3.Position, b)
-	v.Normal = InterpolateVectors(v1.Normal, v2.Normal, v3.Normal, b).Normalize()
-	v.Texture = InterpolateVectors(v1.Texture, v2.Texture, v3.Texture, b)
-	v.Color = InterpolateColors(v1.Color, v2.Color, v3.Color, b)
-	v.Output = InterpolateVectorWs(v1.Output, v2.Output, v3.Output, b)
+	v.Position = InterpolateVectors(v1.Position, v2.Position, v3.Position, b)     // 插值位置
+	v.Normal = InterpolateVectors(v1.Normal, v2.Normal, v3.Normal, b).Normalize() // 插值法向量
+	v.Texture = InterpolateVectors(v1.Texture, v2.Texture, v3.Texture, b)         // 插值纹理坐标
+	v.Color = InterpolateColors(v1.Color, v2.Color, v3.Color, b)                  // 插值颜色
+	v.Output = InterpolateVectorWs(v1.Output, v2.Output, v3.Output, b)            // 插值输出
 	// if v1.Vectors != nil {
 	// 	v.Vectors = make([]Vector, len(v1.Vectors))
 	// 	for i := range v.Vectors {
@@ -46,6 +46,7 @@ func InterpolateVertexes(v1, v2, v3 Vertex, b VectorW) Vertex {
 	return v
 }
 
+// 插值浮点数
 func InterpolateFloats(v1, v2, v3 float64, b VectorW) float64 {
 	var n float64
 	n += v1 * b.X
@@ -54,6 +55,7 @@ func InterpolateFloats(v1, v2, v3 float64, b VectorW) float64 {
 	return n * b.W
 }
 
+// 插值颜色
 func InterpolateColors(v1, v2, v3 Color, b VectorW) Color {
 	n := Color{}
 	n = n.Add(v1.MulScalar(b.X))
@@ -62,6 +64,7 @@ func InterpolateColors(v1, v2, v3 Color, b VectorW) Color {
 	return n.MulScalar(b.W)
 }
 
+// 插值向量
 func InterpolateVectors(v1, v2, v3 Vector, b VectorW) Vector {
 	n := Vector{}
 	n = n.Add(v1.MulScalar(b.X))
@@ -70,6 +73,7 @@ func InterpolateVectors(v1, v2, v3 Vector, b VectorW) Vector {
 	return n.MulScalar(b.W)
 }
 
+// 插值向量W
 func InterpolateVectorWs(v1, v2, v3, b VectorW) VectorW {
 	n := VectorW{}
 	n = n.Add(v1.MulScalar(b.X))
@@ -78,6 +82,7 @@ func InterpolateVectorWs(v1, v2, v3, b VectorW) VectorW {
 	return n.MulScalar(b.W)
 }
 
+// 计算重心坐标
 func Barycentric(p1, p2, p3, p Vector) VectorW {
 	v0 := p2.Sub(p1)
 	v1 := p3.Sub(p1)
